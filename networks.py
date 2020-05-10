@@ -24,6 +24,7 @@ class conv2d(nn.Module):
 
     def forward(self, x):
         out = self.layer(x)
+        
         return out
 
 class deconv2d_res(nn.Module):
@@ -39,14 +40,13 @@ class deconv2d_res(nn.Module):
     def forward(self, x1, x2):
         x1 = self.layer(x1)
         out = torch.cat([x2, x1], dim=1)  # スキップ接続
+
         return out
 
 class Generator(nn.Module):
     
     def __init__(self, in_channels, out_channels=3):
         super(Generator, self).__init__()
-        self.in_channels = in_channels
-        self.out_channels = out_channels
 
         self.conv1 = conv2d(in_channels, 32)
         self.conv2 = conv2d(32, 64)
@@ -74,4 +74,22 @@ class Generator(nn.Module):
 
         return out
 
+class Discriminator(nn.Module):
+    
+    def __init__(self, in_channels, out_channels=1):
+        super(Discriminator, self).__init__()
+        
+        self.conv1 = conv2d(in_channels, 64)
+        self.conv2 = conv2d(64, 128)
+        self.conv3 = conv2d(128, 256)
+        self.conv4 = conv2d(256, 512)
+        self.validity = nn.Conv2d(512, 1, kernel_size=3, stride=1, padding=1)
+    
+    def forward(self, x):
+        d1 = self.conv1(x)
+        d2 = self.conv2(d1)
+        d3 = self.conv3(d2)
+        d4 = self.conv4(d3)
+        out = self.validity(d4)
 
+        return out
