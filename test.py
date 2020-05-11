@@ -10,14 +10,14 @@ import networks as net
 import dataloader as dl
 
 ##### Generatorの動作チェック #####
-G = net.Generator(3)
+G = net.Generator()
 input_image = torch.randn(128, 128, 3)
 input_image = input_image.view(1, 3, 128, 128)
 fake_image = G(input_image)
 print('fake image:', fake_image.shape)
 
 ##### Discriminatorの動作チェック #####
-D = net.Discriminator(3)
+D = net.Discriminator()
 d_out = D(fake_image)
 print('Discriminator output', nn.Sigmoid()(d_out).shape)  # 出力にSigmoidをかけて[0, 1]に変換
 
@@ -36,10 +36,13 @@ train_dataloader = data.DataLoader(train_dataset,
                                    batch_size=batch_size,
                                    shuffle=True)
 
-# 動作の確認
+# バッチを取り出す
 batch_iterator = iter(train_dataloader)  # イテレータに変換
 images = next(batch_iterator)            # 1番目の要素を取り出す
-# print(images)
+print('sample of set A:', images['A'].shape, 'path:', images['path_A'])
+print('sample of set B:', images['B'].shape, 'path:', images['path_B'])
+
+# 描画
 plt.subplot(121)
 dl.imshow(images['A'])
 plt.subplot(122)

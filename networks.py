@@ -3,8 +3,6 @@
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
 
 class conv2d(nn.Module):
     """
@@ -46,7 +44,7 @@ class deconv2d_res(nn.Module):
 class Generator(nn.Module):
     """ UNet構造 """
 
-    def __init__(self, in_channels, out_channels=3):
+    def __init__(self, in_channels=3, out_channels=3):
         super(Generator, self).__init__()
 
         self.conv1 = conv2d(in_channels, 32)    # (N, 128, 128, 3) -> (N, 64, 64, 32)
@@ -80,7 +78,7 @@ class Generator(nn.Module):
 class Discriminator(nn.Module):
     """ PatchGANの構造 """
 
-    def __init__(self, in_channels, out_channels=1):
+    def __init__(self, in_channels=3, out_channels=1):
         super(Discriminator, self).__init__()
         
         self.conv1 = conv2d(in_channels, 64)  # (N, 128, 128, 3) -> (N, 64, 64, 64)
