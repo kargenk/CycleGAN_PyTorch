@@ -96,7 +96,7 @@ for epoch in range(num_epochs):
         real_A = batch['A']
         real_B = batch['B']
 
-        ##### Generatorの訓練 #####
+        ########## Generatorの訓練 ##########
         optimizer_G.zero_grad()
 
         # identity loss
@@ -111,3 +111,21 @@ for epoch in range(num_epochs):
         fake_B = G_A2B(real_A)
         pred_fake = D_B(fake_B)
         loss_adversarial_A2B = criterion_adversarial(pred_fake, target_real)
+
+        fake_A = G_B2A(real_B)
+        pred_fake = D_A(fake_A)
+        loss_adversarial_B2A = criterion_adversarial(pred_fake, target_real)
+
+        # cycle consistency loss
+        reconstruct_A = G_B2A(fake_B)
+        loss_cycle_ABA = criterion_cycle(reconstruct_A, real_A) * lambda_cycle
+
+        reconstruct_B = G_A2B(fake_A)
+        loss_cycle_BAB = criterion_cycle(reconstruct_B, real_B) * lambda_cycle
+
+        # 各損失の合計を算出
+        loss_G = loss_identity_A + loss_identity_B +
+                 loss_adversarial_A2B + loss_adversarial_B2A +
+                 loss_cycle_ABA + loss_cycle_BAB
+        
+        loss_G.backward()  # 逆伝播
