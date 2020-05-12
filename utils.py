@@ -4,6 +4,7 @@
 import torch
 import torch.nn as nn
 import random
+random.seed(42)  # シード値固定
 
 def weights_init(m):
     """

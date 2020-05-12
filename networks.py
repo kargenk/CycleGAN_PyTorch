@@ -47,19 +47,19 @@ class Generator(nn.Module):
     def __init__(self, in_channels=3, out_channels=3):
         super(Generator, self).__init__()
 
-        self.conv1 = conv2d(in_channels, 32)    # (N, 128, 128, 3) -> (N, 64, 64, 32)
-        self.conv2 = conv2d(32, 64)             # (N, 64, 64, 32) -> (N, 32, 32, 64)
-        self.conv3 = conv2d(64, 128)            # (N, 32, 32, 64) -> (N, 16, 16, 128)
-        self.conv4 = conv2d(128, 256)           # (N, 16, 16, 128) -> (N, 8, 8, 256)
+        self.conv1 = conv2d(in_channels, 32)    # (N, 3, 128, 128) -> (N, 32, 64, 64)
+        self.conv2 = conv2d(32, 64)             # (N, 32, 64, 64) -> (N, 64, 32, 32)
+        self.conv3 = conv2d(64, 128)            # (N, 64, 32, 32) -> (N, 128, 16, 16)
+        self.conv4 = conv2d(128, 256)           # (N, 128, 16, 16) -> (N, 256, 8, 8)
         
         # ここから残差接続によりoutchannelsが2倍
-        self.deconv1 = deconv2d_res(256, 128)   # (N, 8, 8, 256) -> (N, 16, 16, 128+128), skip
-        self.deconv2 = deconv2d_res(128*2, 64)  # (N, 16, 16, 256) -> (N, 32, 32, 64+64), skip
-        self.deconv3 = deconv2d_res(64*2, 32)   # (N, 32, 32, 128) -> (N, 64, 64, 32+32), skip
+        self.deconv1 = deconv2d_res(256, 128)   # (N, 256, 8, 8) -> (N, 128+128, 16, 16), skip
+        self.deconv2 = deconv2d_res(128*2, 64)  # (N, 256, 16, 16) -> (N, 64+64, 32, 32), skip
+        self.deconv3 = deconv2d_res(64*2, 32)   # (N, 128, 32, 32) -> (N, 32+32, 64, 64), skip
         self.last = nn.Sequential(
-            nn.ConvTranspose2d(32*2, 64, kernel_size=2, stride=2),            # (N, 64, 64, 64) -> (N, 128, 128, 64)
+            nn.ConvTranspose2d(32*2, 64, kernel_size=2, stride=2),            # (N, 64, 64, 64) -> (N, 64, 128, 128)
             nn.InstanceNorm2d(64),
-            nn.Conv2d(64, out_channels, kernel_size=3, stride=1, padding=1),  # (N, 128, 128, 64) -> (N, 128, 128, 3)
+            nn.Conv2d(64, out_channels, kernel_size=3, stride=1, padding=1),  # (N, 64, 128, 128) -> (N, 3, 128, 128)
             nn.Tanh()
         )
 
@@ -76,18 +76,23 @@ class Generator(nn.Module):
         return out
 
 class Discriminator(nn.Module):
-    """ PatchGANの構造 """
+    """
+    PatchGANの構造．
+    CNNから得られる特徴マップの1pixelは，入力画像のある領域(Receptive field)の影響を受けた値．
+    したがって，「最終出力をあるサイズ(入力画像の1/2^4)の特徴マップにして，各pixelで真偽判定をする」ことと，
+    「入力画像をpatchにして，各patchの出力で真偽判定をすること」は等価．
+    """
 
     def __init__(self, in_channels=3, out_channels=1):
         super(Discriminator, self).__init__()
         
-        self.conv1 = conv2d(in_channels, 64)  # (N, 128, 128, 3) -> (N, 64, 64, 64)
-        self.conv2 = conv2d(64, 128)          # (N, 64, 64, 64) -> (N, 32, 32, 128)
-        self.conv3 = conv2d(128, 256)         # (N, 32, 32, 128) -> (N, 16, 16, 256)
-        self.conv4 = conv2d(256, 512)         # (N, 16, 16, 256) -> (N, 8, 8, 512)
+        self.conv1 = conv2d(in_channels, 64)  # (N, 3, 128, 128) -> (N, 64, 64, 64)
+        self.conv2 = conv2d(64, 128)          # (N, 64, 64, 64) -> (N, 128, 32, 32)
+        self.conv3 = conv2d(128, 256)         # (N, 128, 32, 32) -> (N, 256, 16, 16)
+        self.conv4 = conv2d(256, 512)         # (N, 256, 16, 16) -> (N, 512, 8, 8)
 
         # 真贋判定はPatch形式
-        self.validity = nn.Conv2d(512, 1, kernel_size=3, stride=1, padding=1)  # (N, 8, 8, 512) -> (N, 8, 8, 1)
+        self.validity = nn.Conv2d(512, 1, kernel_size=3, stride=1, padding=1)  # (N, 512, 8, 8) -> (N, 1, 8, 8)
     
     def forward(self, x):
         d1 = self.conv1(x)
