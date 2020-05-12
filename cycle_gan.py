@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data as data
+from torch.autograd import Variable
 
 import numpy as np
 import itertools
@@ -25,6 +26,7 @@ if torch.cuda.is_available():
 lr = 0.0001
 betas = (0.5, 0.999)
 batch_size = 1
+input_size = 128  # patch_size = 8(128/2^4)
 num_epochs = 200
 lambda_cycle = 10.0
 lambda_identity = 5.0
@@ -68,6 +70,11 @@ optimizer_D_B = optim.Adam(D_B.parameters(), lr=lr, betas=betas)
 fake_A_buffer = utils.PreviousBuffer()
 fake_B_buffer = utils.PreviousBuffer()
 
+# 真偽判定に用いるテンソルを定義(パッチ形式)
+Tensor = torch.cuda.FloatTensor if device == 'cuda:0' else torch.Tensor
+target_real = Variable(Tensor(batch_size, 8, 8, 1).fill_(1.0), requires_grad=False)
+target_fake = Variable(Tensor(batch_size, 8, 8, 1).fill_(0.0), requires_grad=False)
+
 # データセットのパスを取得
 train_img_A, train_img_B = dl.make_datapath_list(is_train=True)
 
@@ -83,3 +90,24 @@ train_dataloader = data.DataLoader(train_dataset,
                                    batch_size=batch_size,
                                    shuffle=True)
 
+# 訓練
+for epoch in range(num_epochs):
+    for i, batch in enumerate(train_dataloader):
+        real_A = batch['A']
+        real_B = batch['B']
+
+        ##### Generatorの訓練 #####
+        optimizer_G.zero_grad()
+
+        # identity loss
+        # 本物のBがきたら，G_A2B(B)は本物のBと同じである必要がある
+        same_B = G_A2B(real_B)
+        loss_identity_B = criterion_identity(same_B, real_B) * lambda_identity
+        # 本物のAがきたら，G_B2A(A)は本物のAと同じである必要がある
+        same_A = G_B2A(real_A)
+        loss_identity_A = criterion_identity(same_A, real_A) * lambda_identity
+
+        # adversarial loss
+        fake_B = G_A2B(real_A)
+        pred_fake = D_B(fake_B)
+        loss_adversarial_A2B = criterion_adversarial(pred_fake, target_real)
