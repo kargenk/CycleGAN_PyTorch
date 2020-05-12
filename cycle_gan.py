@@ -99,7 +99,7 @@ for epoch in range(num_epochs):
         ########## Generatorの訓練 ##########
         optimizer_G.zero_grad()
 
-        # identity loss
+        # identity loss: 同一性損失
         # 本物のBがきたら，G_A2B(B)は本物のBと同じである必要がある
         same_B = G_A2B(real_B)
         loss_identity_B = criterion_identity(same_B, real_B) * lambda_identity
@@ -107,7 +107,7 @@ for epoch in range(num_epochs):
         same_A = G_B2A(real_A)
         loss_identity_A = criterion_identity(same_A, real_A) * lambda_identity
 
-        # adversarial loss
+        # adversarial loss: 敵対的損失
         fake_B = G_A2B(real_A)
         pred_fake = D_B(fake_B)
         loss_adversarial_A2B = criterion_adversarial(pred_fake, target_real)
@@ -116,7 +116,7 @@ for epoch in range(num_epochs):
         pred_fake = D_A(fake_A)
         loss_adversarial_B2A = criterion_adversarial(pred_fake, target_real)
 
-        # cycle consistency loss
+        # cycle consistency loss: サイクル一貫性損失
         reconstruct_A = G_B2A(fake_B)
         loss_cycle_ABA = criterion_cycle(reconstruct_A, real_A) * lambda_cycle
 
@@ -128,4 +128,47 @@ for epoch in range(num_epochs):
                  loss_adversarial_A2B + loss_adversarial_B2A +
                  loss_cycle_ABA + loss_cycle_BAB
         
-        loss_G.backward()  # 逆伝播
+        # 逆伝播して，更新
+        loss_G.backward()
+        optimizer_G.step()
+        ##############################
+
+        ########## Discriminator A の訓練 ##########
+        optimizer_D_A.zero_grad()
+
+        # Real loss(本物を本物と判断できれば0)
+        pred_real = D_A(real_A)
+        loss_D_A_real = criterion_adversarial(pred_real, target_real)
+
+        # Fake loss(偽物を偽物と判断できれば0)
+        fake_A = fake_A_buffer.push_and_pop(fake_A)
+        pred_fake = D_A(fake_A.detach())
+        loss_D_A_fake = criterion_adversarial(pred_fake, target_fake)
+
+        # Total loss
+        loss_D_A = (loss_D_A_real + loss_D_A_fake) * 0.5
+
+        # 逆伝播して，更新
+        loss_D_A.backward()
+        optimizer_D_A.step()
+        ##############################
+
+        ########## Discriminator B の訓練 ##########
+        optimizer_D_B.zero_grad()
+
+        # Real loss
+        pred_real = D_B(real_B)
+        loss_D_B_real = criterion_adversarial(pred_real, target_real)
+
+        # Fake loss
+        fake_B = fake_B_buffer.push_and_pop(fake_B)
+        pred_fake = D_B(fake_B.detach())
+        loss_D_B_fake = criterion_adversarial(pred_fake, target_fake)
+
+        # Total loss
+        loss_D_B = (loss_D_B_real + loss_D_B_fake) * 0.5
+
+        # 逆伝播して，更新
+        loss_D_B.backward()
+        optimizer_D_B.step()
+        ##############################
