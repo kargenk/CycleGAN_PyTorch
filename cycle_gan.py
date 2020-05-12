@@ -72,8 +72,8 @@ fake_B_buffer = utils.PreviousBuffer()
 
 # 真偽判定に用いるテンソルを定義(パッチ形式)
 Tensor = torch.cuda.FloatTensor if device == 'cuda:0' else torch.Tensor
-target_real = Variable(Tensor(batch_size, 8, 8, 1).fill_(1.0), requires_grad=False)
-target_fake = Variable(Tensor(batch_size, 8, 8, 1).fill_(0.0), requires_grad=False)
+target_real = Variable(Tensor(batch_size, 1, 8, 8).fill_(1.0), requires_grad=False)
+target_fake = Variable(Tensor(batch_size, 1, 8, 8).fill_(0.0), requires_grad=False)
 
 # データセットのパスを取得
 train_img_A, train_img_B = dl.make_datapath_list(is_train=True)
@@ -124,8 +124,8 @@ for epoch in range(num_epochs):
         loss_cycle_BAB = criterion_cycle(reconstruct_B, real_B) * lambda_cycle
 
         # 各損失の合計を算出
-        loss_G = loss_identity_A + loss_identity_B +
-                 loss_adversarial_A2B + loss_adversarial_B2A +
+        loss_G = loss_identity_A + loss_identity_B + \
+                 loss_adversarial_A2B + loss_adversarial_B2A + \
                  loss_cycle_ABA + loss_cycle_BAB
         
         # 逆伝播して，更新
@@ -172,3 +172,19 @@ for epoch in range(num_epochs):
         loss_D_B.backward()
         optimizer_D_B.step()
         ##############################
+    
+    # ログ出力
+    print('*' * 10, 'epoch {} finish!'.format(epoch), '*' * 10)
+    print('loss_G:', loss_G, 'loss_D:', (loss_D_A + loss_D_B))
+    print('loss_G_identity:', (loss_identity_A + loss_identity_B),
+            'loss_G_adversarial:', (loss_adversarial_A2B + loss_adversarial_B2A),
+            'loss_G_cycle:', (loss_cycle_ABA + loss_cycle_BAB))
+    print('*' * 30)
+    print()
+    
+    # 10エポックごとにモデルを保存
+    if epoch+1 % 10 == 0:
+        torch.save(G_A2B.state_dict(), 'models/G_A2B_epoch{}.pth'.format(epoch+1))
+        torch.save(G_B2A.state_dict(), 'models/G_B2A_epoch{}.pth'.format(epoch+1))
+        torch.save(D_A.state_dict(), 'models/D_A_epoch{}.pth'.format(epoch+1))
+        torch.save(D_B.state_dict(), 'models/D_B_epoch{}.pth'.format(epoch+1))
