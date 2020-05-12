@@ -85,7 +85,6 @@ train_dataset = dl.UnpairedDataset(train_img_A, train_img_B,
                                    transform=dl.ImageTransform(mean, std))
 
 # DataLoaderを作成
-batch_size = 1
 train_dataloader = data.DataLoader(train_dataset,
                                    batch_size=batch_size,
                                    shuffle=True)
